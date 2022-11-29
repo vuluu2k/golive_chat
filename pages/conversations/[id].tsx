@@ -7,20 +7,29 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 
 import SideBar from 'components/SideBar';
 import { auth, db } from 'config/firebase';
-import { Conversation } from 'types';
+import { Conversation, IMessage } from 'types';
 import { getRecipientEmail } from 'utils/getRecipientEmail';
-import { generateQueryGetMessages } from 'utils/getMessagesInConversation';
+import { generateQueryGetMessages, transformMessage } from 'utils/getMessagesInConversation';
+import ConversationScreen from 'components/ConversationScreen';
 
 const StyledContainer = styled.div`
   display: flex;
 `;
 
+const StyledConversationContainer = styled.div`
+  flex-grow:1;
+  overflow: auto;
+  height: 100vh;
+`;
+
 interface Props {
   conversation: Conversation;
+  messages: IMessage[];
 }
 
-const Conversation = ({ conversation }: Props) => {
+const Conversation = ({ conversation, messages }: Props) => {
   const [loggedInUser, _loading, _error] = useAuthState(auth);
+
 
   return (
     <StyledContainer>
@@ -28,6 +37,9 @@ const Conversation = ({ conversation }: Props) => {
         <title>Conversation with {getRecipientEmail(conversation?.users, loggedInUser)} </title>
       </Head>
       <SideBar />
+      <StyledConversationContainer>
+        <ConversationScreen messages={messages} conversation={conversation} />
+      </StyledConversationContainer>
     </StyledContainer>
   );
 };
@@ -43,15 +55,14 @@ export const getServerSideProps: GetServerSideProps<Props, { id: string }> = asy
 
   const queryMessages = generateQueryGetMessages(conversationId);
 
-  console.log(queryMessages);
-
   const messagesSnapShot = await getDocs(queryMessages);
 
-  console.log(messagesSnapShot.docs);
+  const messages = messagesSnapShot.docs.map(messageDoc => transformMessage(messageDoc));
 
   return {
     props: {
       conversation: conversationSnapShot.data() as Conversation,
+      messages,
     },
   };
 };

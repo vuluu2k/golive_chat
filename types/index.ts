@@ -10,11 +10,10 @@ export interface AppUser {
   photoUrl: string;
 }
 
-
 export interface IMessage {
-	id: string
-	conversation_id: string
-	text: string
-	sent_at: string
-	user: string
+  id: string;
+  conversation_id: string;
+  content: string;
+  send_at: string;
+  user: string;
 }
