@@ -17,9 +17,12 @@ import TextField from '@mui/material/TextField';
 import DialogActions from '@mui/material/DialogActions';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import * as EmailValidator from 'email-validator';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, query, where } from 'firebase/firestore';
+import { useCollection } from 'react-firebase-hooks/firestore';
 
 import { auth, db } from 'config/firebase';
+import { Conversation } from 'types';
+import ConversationSelect from 'components/ConversationSelect';
 
 const StyledContainer = styled.div`
   height: 100vh;
@@ -80,6 +83,14 @@ const SideBar = () => {
     setRecipientEmail(' ');
   };
 
+  const queryGetConversationsForCurrentUser = query(collection(db, 'conversations'), where('users', 'array-contains', loggedInUser?.email));
+
+  const [conversationsSnapShot, __loading, __error] = useCollection(queryGetConversationsForCurrentUser);
+
+  const isConversationAlreadyExists = (recipientEmail: string) => {
+    return conversationsSnapShot?.docs.find(conversation => (conversation.data() as Conversation).users.includes(recipientEmail));
+  };
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -88,12 +99,12 @@ const SideBar = () => {
     }
   };
 
-
   const handleCreateConversation = async () => {
     if (!recipientEmail) return;
+    if (isConversationAlreadyExists(recipientEmail)) return;
     if (EmailValidator.validate(recipientEmail) && !isInvitingSelf) {
       try {
-        await addDoc(collection(db, 'conversation'), {
+        await addDoc(collection(db, 'conversations'), {
           users: [loggedInUser?.email, recipientEmail],
         });
         handleCloseNewConversation();
@@ -127,6 +138,18 @@ const SideBar = () => {
         <StyledSearchInput placeholder="Search in conversation" />
       </StyledSearch>
       <StyledSideBarButton onClick={handleOpenNewConversation}>Start a new conversation</StyledSideBarButton>
+
+      {/* List Conversation */}
+
+      {conversationsSnapShot?.docs.map(conversation => {
+        return (
+          <ConversationSelect
+            key={conversation.id}
+            id={conversation.id}
+            conversationUsers={(conversation.data() as Conversation).users}
+          />
+        );
+      })}
 
       <Dialog open={isOpenNewConversation} onClose={handleCloseNewConversation}>
         <DialogTitle>New Conversation</DialogTitle>
